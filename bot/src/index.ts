@@ -1,11 +1,21 @@
 import { Client, GatewayIntentBits, Interaction, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ModalSubmitInteraction, EmbedBuilder, TextChannel, Events } from 'discord.js';
 import { config } from 'dotenv';
+import http from 'node:http';
 import { VoiceManager } from './services/VoiceManager.js';
 import { TimerService } from './services/TimerService.js';
 import { DatabaseService } from './services/DatabaseService.js';
 import { LeaderboardReporter } from './services/LeaderboardReporter.js';
 
 config();
+
+// Simple health check server for Railway/Deployment
+const port = process.env.PORT || 8080;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('PomoSom Bot is running\n');
+}).listen(port, () => {
+    console.log(`Health check server listening on port ${port}`);
+});
 
 const client = new Client({
     intents: [
