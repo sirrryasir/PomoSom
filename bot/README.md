@@ -1,9 +1,9 @@
-# PomoSom Bot 🤖🦁
+# PomoSom Bot
 **The heartbeat of the PomoSom ecosystem.**
 
 The PomoSom Discord bot manages voice channel productivity sessions, tracks user time, and generates visual reports.
 
-## 🛠️ Main Commands
+## Main Commands
 
 ### Administrator Only
 - `!setup [channel-mention]`: Set the designated channel for automated reports.
@@ -14,14 +14,14 @@ The PomoSom Discord bot manages voice channel productivity sessions, tracks user
 - `!stats`: View your personal study statistics (Coming soon).
 - `!help`: Detailed command list.
 
-## 🏗️ Core Architecture
+## Core Architecture
 - **TimerService**: Manages room-centric state and interval logic.
 - **ImageService**: High-performance canvas rendering for leaderboards and status cards.
 - **LeaderboardReporter**: Handles automated scheduling and broadcasting of reports.
 - **DatabaseService**: Direct integration with Supabase (PostgreSQL).
 - **VoiceManager**: Handles voice connections and audio alerts.
 
-## 🚀 Development
+## Development
 
 ### Build and Run
 ```bash
@@ -33,4 +33,4 @@ bun run start
 Ensure `DISCORD_TOKEN`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are set in `.env`.
 
 ---
-*PomoSom Bot • Premium Productivity* 🦁✨
+*PomoSom Bot • Premium Productivity*
