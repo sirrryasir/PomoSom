@@ -1,0 +1,13 @@
+{
+    "name": "pomosom",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "bot",
+        "web"
+    ],
+    "scripts": {
+        "dev:bot": "cd bot && bun run start",
+        "dev:web": "cd web && bun run dev"
+    }
+}
