@@ -39,10 +39,20 @@ export class TimerService {
     leaveRoom(userId, channelId) {
         const room = this.rooms.get(channelId);
         if (room) {
-            room.participants.delete(userId);
-            // Do NOT stop the room here. 
-            // The room will stop at the end of the stage if size is 0.
+            const participant = room.participants.get(userId);
+            if (participant) {
+                const now = new Date();
+                const durationMs = now.getTime() - participant.joinedAt.getTime();
+                const durationMinutes = Math.floor(durationMs / 60000); // Integer minutes
+                room.participants.delete(userId);
+                console.log(`[TimerService] Participant ${userId} logged ${durationMinutes}m in room ${channelId}.`);
+                return {
+                    durationMinutes,
+                    type: room.type
+                };
+            }
         }
+        return null;
     }
     stopTimer(userId) {
         const room = this.getUserSession(userId);

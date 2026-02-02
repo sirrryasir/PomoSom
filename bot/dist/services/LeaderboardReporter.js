@@ -54,22 +54,22 @@ export class LeaderboardReporter {
             if (!channel)
                 return;
             if (leaderboard.length === 0) {
+                console.log(`[LeaderboardReporter] ℹ️ No data found for guild ${guildId} (${timeframe})`);
                 if (isManual) {
                     await targetChannel.send("No study data available for this timeframe yet.");
                 }
                 return;
             }
-            if (leaderboard.length === 0)
-                return;
             const imageBuffer = await this.imageService.generateLeaderboardCard(guild.name, timeframe === 'daily' ? 'Daily' : timeframe === 'weekly' ? 'Weekly' : 'Monthly', leaderboard, this.client);
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'leaderboard.png' });
             await channel.send({
                 content: `**${timeframe.toUpperCase()} REPORT** for **${guild.name}**`,
                 files: [attachment]
             });
+            console.log(`[LeaderboardReporter] 📤 Sent ${timeframe} report to ${guild.name}`);
         }
         catch (err) {
-            console.error(`Failed to send report to guild ${guildId}:`, err);
+            console.error(`[LeaderboardReporter] ❌ Failed to send report to guild ${guildId}:`, err);
             if (targetChannel) {
                 await targetChannel.send("Error generating visual report.");
             }

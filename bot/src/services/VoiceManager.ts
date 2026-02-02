@@ -16,9 +16,8 @@ import {
     VoiceConnection,
     VoiceConnectionStatus,
     entersState,
-    getVoiceConnection,
 } from '@discordjs/voice';
-import { TimerService, RoomSession, Participant } from './TimerService.js';
+import { TimerService, RoomSession } from './TimerService.js';
 import { ImageService } from './ImageService.js';
 import { DatabaseService } from './DatabaseService.js';
 import path from 'path';
@@ -41,7 +40,6 @@ export class VoiceManager {
     private dbService: DatabaseService;
     private channelMutex: Map<string, Promise<void>> = new Map();
     private guildVoiceLock: Map<string, Promise<void>> = new Map();
-    private processedJoins: Map<string, number> = new Map();
 
     constructor(client: Client, timerService: TimerService, dbService: DatabaseService) {
         this.client = client;
@@ -49,17 +47,12 @@ export class VoiceManager {
         this.imageService = new ImageService();
         this.dbService = dbService;
 
-        this.timerService.on('stageComplete', (room: RoomSession) => {
-            this.handleStageComplete(room);
-        });
-
+        // --- Event Listeners ---
+        this.timerService.on('stageComplete', (room: RoomSession) => this.handleStageComplete(room));
         this.timerService.on('missedTick', (data: { userId: string, guildId: string, channelId: string, missedTicks: number }) => {
             this.handleMissedTick(data);
         });
-
-        this.timerService.on('tick', (room: RoomSession) => {
-            this.handleTick(room);
-        });
+        this.timerService.on('tick', (room: RoomSession) => this.handleTick(room));
     }
 
     async handleUserJoin(state: VoiceState) {
@@ -67,14 +60,14 @@ export class VoiceManager {
 
         const userId = state.member.user.id;
         const guildId = state.guild.id;
-        const channelId = state.channel!.id;
+        const channelId = state.channel?.id;
+
+        if (!channelId) return;
 
         this.timerService.joinRoom(userId, guildId, channelId);
 
-        // Ensure bot is in VC for visual presence
-        if (!this.connections.has(guildId)) {
-            await this.joinChannel(channelId, guildId);
-        }
+        // PASSIVE MODE: Bot does NOT join the VC automatically.
+        // The bot acts as a "Ghost Tracker".
 
         // Always force a new status message on join for instant feedback
         await this.updateStatusMessage(guildId, channelId, true, true);
@@ -89,12 +82,34 @@ export class VoiceManager {
 
         if (!channelId) return;
 
-        this.timerService.leaveRoom(userId, channelId);
+        console.log(`[VoiceManager] 📤 User ${state.member.user.tag} left ${channelId}`);
+
+        // Log the partial session
+        const session = this.timerService.leaveRoom(userId, channelId);
+        if (session && session.durationMinutes > 0) {
+            console.log(`[VoiceManager] 💾 Logging session: ${session.durationMinutes}m for ${userId}`);
+            await this.dbService.logSession(userId, guildId, session.durationMinutes, session.type);
+        }
+
+        // Auto-leave check (Passive Mode Cleanup)
+        try {
+            const channel = await this.client.channels.fetch(channelId);
+            if (channel && channel.isVoiceBased()) {
+                const voiceChannel = channel as VoiceChannel;
+                const humans = voiceChannel.members.filter(m => !m.user.bot).size;
+                if (humans === 0) {
+                    console.log(`[VoiceManager] 🧹 VC Empty. Cleaning up.`);
+                    this.leaveChannel(guildId);
+                }
+            }
+        } catch (err) {
+            console.error(`[VoiceManager] ❌ Failed to check members on leave:`, err);
+        }
 
         const room = this.timerService.getRoomSession(channelId);
         if (room) {
-            // Always force a new status message on leave to reflect current participants
-            await this.updateStatusMessage(guildId, channelId, true, true);
+            // Update status card safely
+            await this.updateStatusMessage(guildId, channelId, true, false);
         }
     }
 
@@ -136,18 +151,21 @@ export class VoiceManager {
     }
 
     private async handleMissedTick(data: { userId: string, guildId: string, channelId: string, missedTicks: number }) {
+        // Double check threshold here just in case, though TimerService handles emission
         if (data.missedTicks >= 4) {
+            console.log(`[VoiceManager] 👢 Kicking user ${data.userId} after ${data.missedTicks} missed sessions.`);
+
             const guild = this.client.guilds.cache.get(data.guildId);
             const member = await guild?.members.fetch(data.userId).catch(() => null);
 
             if (member && member.voice.channel) {
-                await member.voice.disconnect(`Inactivity limit reached`).catch(() => { });
+                await member.voice.disconnect(`Inactivity: Missed 4 consecutive check-ins`).catch(() => { });
                 const channel = await this.client.channels.fetch(data.channelId);
                 if (channel && channel.isTextBased()) {
-                    await (channel as any).send(`User <@${data.userId}> disconnected due to inactivity.`).catch(() => { });
+                    await (channel as any).send(`User <@${data.userId}> disconnected for inactivity (Missed 4 sessions).`).catch(() => { });
                 }
             }
-            this.timerService.stopTimer(data.userId);
+            this.timerService.stopTimer(data.userId); // This actually removes them from the room
         }
     }
 
@@ -241,7 +259,7 @@ export class VoiceManager {
                 }
             }
 
-            let lastMsgId = this.statusMessages.get(channelId);
+            let lastMsgId: string | undefined = this.statusMessages.get(channelId);
             const messageOptions: any = { content, embeds: [embed], components: [row] };
             if (attachment) {
                 messageOptions.files = [attachment];
@@ -249,7 +267,8 @@ export class VoiceManager {
 
             // Check database for persistent message ID if memory doesn't have it
             if (!lastMsgId) {
-                lastMsgId = await this.dbService.getActiveMessage(channelId);
+                const dbMsgId = await this.dbService.getActiveMessage(channelId);
+                if (dbMsgId) lastMsgId = dbMsgId;
             }
 
             if (lastMsgId && !forceNew) {
@@ -281,14 +300,12 @@ export class VoiceManager {
         }
     }
 
-    private async joinChannel(channelId: string, guildId: string): Promise<VoiceConnection | null> {
-        const channel = await this.client.channels.fetch(channelId);
-    public async joinChannel(channelId: string, guildId: string) {
+    public async joinChannel(channelId: string, guildId: string): Promise<VoiceConnection | null> {
         console.log(`[VoiceManager] Attempting to join channel ${channelId} in guild ${guildId}`);
         const guild = this.client.guilds.cache.get(guildId);
         if (!guild) {
             console.error(`[VoiceManager] Guild ${guildId} not found in cache`);
-            return;
+            return null;
         }
 
         try {
@@ -319,8 +336,10 @@ export class VoiceManager {
                 console.error(`[VoiceManager] Connection error in guild ${guildId}:`, error);
             });
 
+            return connection;
         } catch (error) {
             console.error(`[VoiceManager] Failed to join channel ${channelId}:`, error);
+            return null;
         }
     }
 

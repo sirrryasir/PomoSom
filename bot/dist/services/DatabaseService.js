@@ -1,200 +1,196 @@
-import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 import { config } from 'dotenv';
 config();
 export class DatabaseService {
-    supabase;
+    sql;
+    dbUrl;
     constructor() {
-        const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        if (!supabaseUrl || !supabaseKey) {
-            console.warn('Supabase credentials missing. Database operations will be skipped.');
-            this.supabase = null;
+        this.dbUrl = process.env.DATABASE_URL || '';
+        if (!this.dbUrl) {
+            console.warn('[DatabaseService] ⚠️ DATABASE_URL missing. Operations will count towards memory only.');
+            this.sql = null;
         }
         else {
-            this.supabase = createClient(supabaseUrl, supabaseKey);
+            // StudyLion-like connection pool settings
+            this.sql = postgres(this.dbUrl, {
+                ssl: 'require',
+                max: 10, // Connection pool size
+                idle_timeout: 20, // Close idle connections after 20s
+                connect_timeout: 10, // Fail fast if DB is down
+            });
+            console.log(`[DatabaseService] Connected to Neon Postgres.`);
         }
     }
+    isConnected() {
+        return !!this.sql;
+    }
     /**
-     * Logs a completed focus session and updates server/global stats
+     * Logs a completed session.
+     * Upserts into guild_stats to keep leaderboards real-time.
      */
     async logSession(userId, guildId, durationMinutes, sessionType = 'focus') {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return;
         try {
-            // 1. Log the individual session
-            const { error: sessionError } = await this.supabase
-                .from('session_logs')
-                .insert({
-                user_id: userId,
-                guild_id: guildId,
-                duration: durationMinutes,
-                session_type: sessionType,
-                is_web: false
-            });
-            if (sessionError)
-                throw sessionError;
-            // 2. Update Guild Stats if in a server
+            // 1. Immutable Log
+            await this.sql `
+                INSERT INTO session_logs (user_id, guild_id, duration, session_type, is_web)
+                VALUES (${userId}, ${guildId}, ${durationMinutes}, ${sessionType}, false)
+            `;
+            // 2. Aggregated Stats (Upsert)
             if (guildId) {
-                const { data: currentStats } = await this.supabase
-                    .from('guild_stats')
-                    .select('*')
-                    .eq('guild_id', guildId)
-                    .eq('user_id', userId)
-                    .single();
-                if (currentStats) {
-                    await this.supabase
-                        .from('guild_stats')
-                        .update({
-                        daily_time: currentStats.daily_time + durationMinutes,
-                        weekly_time: currentStats.weekly_time + durationMinutes,
-                        monthly_time: currentStats.monthly_time + durationMinutes,
-                        total_time: currentStats.total_time + durationMinutes,
-                        updated_at: new Date()
-                    })
-                        .eq('id', currentStats.id);
-                }
-                else {
-                    await this.supabase
-                        .from('guild_stats')
-                        .insert({
-                        guild_id: guildId,
-                        user_id: userId,
-                        daily_time: durationMinutes,
-                        weekly_time: durationMinutes,
-                        monthly_time: durationMinutes,
-                        total_time: durationMinutes
-                    });
-                }
+                await this.sql `
+                    INSERT INTO guild_stats (guild_id, user_id, daily_time, weekly_time, monthly_time, total_time, updated_at)
+                    VALUES (${guildId}, ${userId}, ${durationMinutes}, ${durationMinutes}, ${durationMinutes}, ${durationMinutes}, NOW())
+                    ON CONFLICT (guild_id, user_id)
+                    DO UPDATE SET
+                        daily_time = guild_stats.daily_time + ${durationMinutes},
+                        weekly_time = guild_stats.weekly_time + ${durationMinutes},
+                        monthly_time = guild_stats.monthly_time + ${durationMinutes},
+                        total_time = guild_stats.total_time + ${durationMinutes},
+                        updated_at = NOW()
+                `;
             }
-            console.log(`Successfully logged session for user ${userId} (${durationMinutes}m)`);
         }
         catch (err) {
-            console.error('Failed to log session to Supabase:', err);
+            console.error('[DatabaseService] ❌ Failed to log session:', err);
         }
     }
     /**
-     * Gets the top 10 users for a specific guild
+     * Fetches top 10 users for the leaderboard.
      */
     async getGuildLeaderboard(guildId, timeframe = 'total') {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return [];
-        const column = `${timeframe}_time`;
-        const { data, error } = await this.supabase
-            .from('guild_stats')
-            .select('*')
-            .eq('guild_id', guildId)
-            .order(column, { ascending: false })
-            .limit(10);
-        if (error) {
-            console.error('Error fetching leaderboard:', error);
+        try {
+            const column = timeframe === 'daily' ? this.sql `daily_time` :
+                timeframe === 'weekly' ? this.sql `weekly_time` :
+                    timeframe === 'monthly' ? this.sql `monthly_time` :
+                        this.sql `total_time`;
+            const data = await this.sql `
+                SELECT * FROM guild_stats
+                WHERE guild_id = ${guildId}
+                ORDER BY ${column} DESC
+                LIMIT 10
+            `;
+            return data;
+        }
+        catch (error) {
+            console.error('[DatabaseService] ❌ Error fetching leaderboard:', error);
             return [];
         }
-        return data;
     }
     /**
-     * Gets configuration for a specific guild
+     * Retrieves guild configuration.
      */
     async getGuildConfig(guildId) {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return null;
-        const { data, error } = await this.supabase
-            .from('guild_configs')
-            .select('*')
-            .eq('guild_id', guildId)
-            .single();
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
-            console.error(`Error fetching guild config for ${guildId}:`, error);
+        try {
+            const [data] = await this.sql `
+                SELECT * FROM guild_configs
+                WHERE guild_id = ${guildId}
+                LIMIT 1
+            `;
+            return data || null;
         }
-        return data;
+        catch (error) {
+            console.error(`[DatabaseService] ❌ Error fetching config for ${guildId}:`, error);
+            return null;
+        }
     }
     /**
-     * Updates or creates configuration for a specific guild
+     * Updates guild configuration (Channels, etc).
      */
     async updateGuildConfig(guildId, updates) {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return;
-        const { error } = await this.supabase
-            .from('guild_configs')
-            .upsert({
-            guild_id: guildId,
-            ...updates,
-            updated_at: new Date()
-        });
-        if (error) {
-            console.error(`Error updating guild config for ${guildId}:`, error);
+        try {
+            const studyChannelId = updates.study_channel_id;
+            const reportChannelId = updates.report_channel_id;
+            // Check if exists first to decide INSERT vs UPDATE
+            // This explicit check is safer than complex ON CONFLICT logic for dynamic updates
+            const existing = await this.getGuildConfig(guildId);
+            if (existing) {
+                await this.sql `
+                    UPDATE guild_configs SET ${this.sql(updates)}, updated_at = NOW()
+                    WHERE guild_id = ${guildId}
+                 `;
+            }
+            else {
+                await this.sql `
+                    INSERT INTO guild_configs (guild_id, study_channel_id, report_channel_id)
+                    VALUES (${guildId}, ${studyChannelId || null}, ${reportChannelId || null})
+                 `;
+            }
+        }
+        catch (error) {
+            console.error(`[DatabaseService] ❌ Error updating config for ${guildId}:`, error);
             throw error;
         }
     }
     /**
-     * Gets aggregated stats for a specific user across all guilds
+     * Aggregates a user's total study time across all servers.
      */
     async getUserProfile(userId) {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return null;
-        const { data, error } = await this.supabase
-            .from('guild_stats')
-            .select('daily_time, weekly_time, monthly_time, total_time')
-            .eq('user_id', userId);
-        if (error) {
-            console.error(`Error fetching profile for ${userId}:`, error);
+        try {
+            const data = await this.sql `
+                SELECT daily_time, weekly_time, monthly_time, total_time
+                FROM guild_stats
+                WHERE user_id = ${userId}
+            `;
+            if (!data || data.length === 0)
+                return null;
+            return data.reduce((acc, curr) => ({
+                daily_time: acc.daily_time + curr.daily_time,
+                weekly_time: acc.weekly_time + curr.weekly_time,
+                monthly_time: acc.monthly_time + curr.monthly_time,
+                total_time: acc.total_time + curr.total_time
+            }), { daily_time: 0, weekly_time: 0, monthly_time: 0, total_time: 0 });
+        }
+        catch (error) {
+            console.error(`[DatabaseService] ❌ Error fetching profile for ${userId}:`, error);
             return null;
         }
-        if (!data || data.length === 0)
-            return null;
-        // Aggregate stats
-        return data.reduce((acc, curr) => ({
-            daily_time: (acc.daily_time || 0) + (curr.daily_time || 0),
-            weekly_time: (acc.weekly_time || 0) + (curr.weekly_time || 0),
-            monthly_time: (acc.monthly_time || 0) + (curr.monthly_time || 0),
-            total_time: (acc.total_time || 0) + (curr.total_time || 0)
-        }), { daily_time: 0, weekly_time: 0, monthly_time: 0, total_time: 0 });
     }
-    /**
-     * Persists the last status message ID for a channel
-     */
+    // --- Active Message Management (for persistent status cards) ---
     async setActiveMessage(channelId, guildId, messageId) {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return;
-        const { error } = await this.supabase
-            .from('active_channel_messages')
-            .upsert({
-            channel_id: channelId,
-            guild_id: guildId,
-            message_id: messageId,
-            updated_at: new Date()
-        });
-        if (error) {
-            console.error(`Error setting active message for ${channelId}:`, error);
+        try {
+            await this.sql `
+                INSERT INTO active_channel_messages (channel_id, guild_id, message_id, updated_at)
+                VALUES (${channelId}, ${guildId}, ${messageId}, NOW())
+                ON CONFLICT (channel_id)
+                DO UPDATE SET message_id = ${messageId}, updated_at = NOW()
+            `;
+        }
+        catch (error) {
+            console.error(`[DatabaseService] Error setting active message:`, error);
         }
     }
-    /**
-     * Retrieves the last status message ID for a channel
-     */
     async getActiveMessage(channelId) {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return null;
-        const { data, error } = await this.supabase
-            .from('active_channel_messages')
-            .select('message_id')
-            .eq('channel_id', channelId)
-            .single();
-        if (error && error.code !== 'PGRST116') {
-            console.error(`Error fetching active message for ${channelId}:`, error);
+        try {
+            const [data] = await this.sql `
+                SELECT message_id FROM active_channel_messages
+                WHERE channel_id = ${channelId}
+            `;
+            return data?.message_id || null;
         }
-        return data?.message_id || null;
+        catch (error) {
+            return null;
+        }
     }
-    /**
-     * Deletes the active message record for a channel
-     */
     async deleteActiveMessage(channelId) {
-        if (!this.supabase || !process.env.SUPABASE_URL)
+        if (!this.sql)
             return;
-        const { error } = await this.supabase
-            .from('active_channel_messages')
-            .delete()
-            .eq('channel_id', channelId);
-        if (error) {
-            console.error(`Error deleting active message for ${channelId}:`, error);
+        try {
+            await this.sql `DELETE FROM active_channel_messages WHERE channel_id = ${channelId}`;
         }
+        catch (error) { /* Ignore */ }
     }
 }

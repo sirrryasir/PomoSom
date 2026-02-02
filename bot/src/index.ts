@@ -64,12 +64,15 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     if (!member || member.user.bot || member.id === client.user?.id) return;
 
     const guildId = newState.guild.id || oldState.guild.id;
+    console.log(`[DiscordEvent] VoiceUpdate for ${member.user.tag} in ${guildId}`);
+
     const config = await dbService.getGuildConfig(guildId);
     const studyChannelId = config?.study_channel_id;
 
     // Join Logic
     if (newState.channel && (!oldState.channel || oldState.channel.id !== newState.channel.id)) {
         if (studyChannelId && newState.channel.id === studyChannelId) {
+            console.log(`[DiscordEvent] Valid Join detected for ${studyChannelId}`);
             await voiceManager.handleUserJoin(newState);
         }
     }
@@ -77,6 +80,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     // Leave Logic
     if (oldState.channel && (!newState.channel || oldState.channel.id !== newState.channel.id)) {
         if (studyChannelId && oldState.channel.id === studyChannelId) {
+            console.log(`[DiscordEvent] Valid Leave detected for ${studyChannelId}`);
             await voiceManager.handleUserLeave(oldState);
         }
     }
@@ -291,8 +295,15 @@ client.on('messageCreate', async (message) => {
             return message.reply("Administrator permission required.");
         }
 
+        // CRITICAL: Check DB connection first
+        if (!dbService.isConnected()) {
+            console.error('[System] ❌ Database disconnected during setup attempt.');
+            return message.reply("❌ **Database Error**: I cannot save settings because I am not connected to the database. Please check my configuration (Environment Variables).");
+        }
+
         const subCommand = args[0]?.toLowerCase();
 
+        // --- Subcommand: Reports ---
         if (subCommand === 'report-channel' || subCommand === 'reports') {
             const channelMention = args[1];
             const channelId = channelMention?.replace(/[<#>]/g, '');
@@ -304,12 +315,15 @@ client.on('messageCreate', async (message) => {
 
             try {
                 await dbService.updateGuildConfig(message.guildId!, { report_channel_id: channel.id });
+                console.log(`[System] ✅ Reports channel set to ${channel.id} for guild ${message.guildId}`);
                 return message.reply(`Report channel successfully set to <#${channel.id}>.`);
             } catch (err) {
+                console.error(`[System] ❌ Failed to update report config:`, err);
                 return message.reply("Failed to update server configuration.");
             }
         }
 
+        // --- Subcommand: Voice Channel (VC) ---
         if (subCommand === 'study-channel' || subCommand === 'vc') {
             const channelMention = args[1];
             const channelId = channelMention?.replace(/[<#>]/g, '');
@@ -321,6 +335,7 @@ client.on('messageCreate', async (message) => {
 
             try {
                 await dbService.updateGuildConfig(message.guildId!, { study_channel_id: channel.id });
+                console.log(`[System] ✅ Study channel set to ${channel.id} for guild ${message.guildId}`);
 
                 // Immediately check if anyone is already in the channel
                 if (channel.members.size > 0) {
@@ -333,10 +348,35 @@ client.on('messageCreate', async (message) => {
 
                 return message.reply(`Study channel successfully set to <#${channel.id}>. Tracking is now active.`);
             } catch (err) {
+                console.error(`[System] ❌ Failed to update VC config:`, err);
                 return message.reply("Failed to update server configuration.");
             }
         }
 
+        // --- Subcommand: Debug ---
+        if (subCommand === 'debug') {
+            const config = await dbService.getGuildConfig(message.guildId!);
+            const room = config?.study_channel_id ? timerService.getRoomSession(config.study_channel_id) : null;
+
+            let participantList = "No active session.";
+            if (room) {
+                const names = Array.from(room.participants.values()).map(p => `<@${p.userId}> (${p.isActive ? 'Active' : 'Away'})`).join('\n');
+                participantList = names || "Session active but empty.";
+            }
+
+            const stats = new EmbedBuilder()
+                .setColor('#FF0000')
+                .setTitle('⚠️ SYSTEM DEBUG')
+                .addFields(
+                    { name: 'Configured VC', value: config?.study_channel_id ? `<#${config.study_channel_id}> (${config.study_channel_id})` : 'None' },
+                    { name: 'Current Room State', value: room ? `Running: ${room.isRunning}, Stage: ${room.type}` : 'No Session Found' },
+                    { name: 'Participants (In Memory)', value: participantList }
+                );
+
+            return message.reply({ embeds: [stats] });
+        }
+
+        // --- Default: Show Config ---
         const config = await dbService.getGuildConfig(message.guildId!);
         const reportChannelId = config?.report_channel_id || 'Not Set';
         const studyChannelId = config?.study_channel_id;

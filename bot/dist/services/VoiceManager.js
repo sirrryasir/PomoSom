@@ -1,5 +1,5 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, } from 'discord.js';
-import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, getVoiceConnection, } from '@discordjs/voice';
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, } from '@discordjs/voice';
 import { ImageService } from './ImageService.js';
 import path from 'path';
 import fs from 'fs';
@@ -17,29 +17,29 @@ export class VoiceManager {
     dbService;
     channelMutex = new Map();
     guildVoiceLock = new Map();
-    processedJoins = new Map();
     constructor(client, timerService, dbService) {
         this.client = client;
         this.timerService = timerService;
         this.imageService = new ImageService();
         this.dbService = dbService;
-        this.timerService.on('stageComplete', (room) => {
-            this.handleStageComplete(room);
-        });
+        // --- Event Listeners ---
+        this.timerService.on('stageComplete', (room) => this.handleStageComplete(room));
         this.timerService.on('missedTick', (data) => {
             this.handleMissedTick(data);
         });
-        this.timerService.on('tick', (room) => {
-            this.handleTick(room);
-        });
+        this.timerService.on('tick', (room) => this.handleTick(room));
     }
     async handleUserJoin(state) {
         if (!state.member || state.member.user.bot || state.member.id === this.client.user?.id)
             return;
         const userId = state.member.user.id;
         const guildId = state.guild.id;
-        const channelId = state.channel.id;
+        const channelId = state.channel?.id;
+        if (!channelId)
+            return;
         this.timerService.joinRoom(userId, guildId, channelId);
+        // PASSIVE MODE: Bot does NOT join the VC automatically.
+        // The bot acts as a "Ghost Tracker".
         // Always force a new status message on join for instant feedback
         await this.updateStatusMessage(guildId, channelId, true, true);
     }
@@ -51,11 +51,32 @@ export class VoiceManager {
         const channelId = state.channel?.id;
         if (!channelId)
             return;
-        this.timerService.leaveRoom(userId, channelId);
+        console.log(`[VoiceManager] 📤 User ${state.member.user.tag} left ${channelId}`);
+        // Log the partial session
+        const session = this.timerService.leaveRoom(userId, channelId);
+        if (session && session.durationMinutes > 0) {
+            console.log(`[VoiceManager] 💾 Logging session: ${session.durationMinutes}m for ${userId}`);
+            await this.dbService.logSession(userId, guildId, session.durationMinutes, session.type);
+        }
+        // Auto-leave check (Passive Mode Cleanup)
+        try {
+            const channel = await this.client.channels.fetch(channelId);
+            if (channel && channel.isVoiceBased()) {
+                const voiceChannel = channel;
+                const humans = voiceChannel.members.filter(m => !m.user.bot).size;
+                if (humans === 0) {
+                    console.log(`[VoiceManager] 🧹 VC Empty. Cleaning up.`);
+                    this.leaveChannel(guildId);
+                }
+            }
+        }
+        catch (err) {
+            console.error(`[VoiceManager] ❌ Failed to check members on leave:`, err);
+        }
         const room = this.timerService.getRoomSession(channelId);
         if (room) {
-            // Always force a new status message on leave to reflect current participants
-            await this.updateStatusMessage(guildId, channelId, true, true);
+            // Update status card safely
+            await this.updateStatusMessage(guildId, channelId, true, false);
         }
     }
     async handleTick(room) {
@@ -83,23 +104,26 @@ export class VoiceManager {
                 await this.dbService.deleteActiveMessage(room.channelId);
             }
             this.timerService.stopRoomCleanup(room.channelId);
+            this.leaveChannel(room.guildId);
             return;
         }
         await this.updateStatusMessage(room.guildId, room.channelId, true, true);
         await this.playAlert(room.guildId, room.channelId, room.type);
     }
     async handleMissedTick(data) {
+        // Double check threshold here just in case, though TimerService handles emission
         if (data.missedTicks >= 4) {
+            console.log(`[VoiceManager] 👢 Kicking user ${data.userId} after ${data.missedTicks} missed sessions.`);
             const guild = this.client.guilds.cache.get(data.guildId);
             const member = await guild?.members.fetch(data.userId).catch(() => null);
             if (member && member.voice.channel) {
-                await member.voice.disconnect(`Inactivity limit reached`).catch(() => { });
+                await member.voice.disconnect(`Inactivity: Missed 4 consecutive check-ins`).catch(() => { });
                 const channel = await this.client.channels.fetch(data.channelId);
                 if (channel && channel.isTextBased()) {
-                    await channel.send(`User <@${data.userId}> disconnected due to inactivity.`).catch(() => { });
+                    await channel.send(`User <@${data.userId}> disconnected for inactivity (Missed 4 sessions).`).catch(() => { });
                 }
             }
-            this.timerService.stopTimer(data.userId);
+            this.timerService.stopTimer(data.userId); // This actually removes them from the room
         }
     }
     async updateStatusMessage(guildId, channelId, updateImage = true, forceNew = false) {
@@ -185,7 +209,9 @@ export class VoiceManager {
             }
             // Check database for persistent message ID if memory doesn't have it
             if (!lastMsgId) {
-                lastMsgId = await this.dbService.getActiveMessage(channelId);
+                const dbMsgId = await this.dbService.getActiveMessage(channelId);
+                if (dbMsgId)
+                    lastMsgId = dbMsgId;
             }
             if (lastMsgId && !forceNew) {
                 try {
@@ -217,24 +243,43 @@ export class VoiceManager {
         }
     }
     async joinChannel(channelId, guildId) {
-        const channel = await this.client.channels.fetch(channelId);
-        if (!channel || !channel.isVoiceBased())
+        console.log(`[VoiceManager] Attempting to join channel ${channelId} in guild ${guildId}`);
+        const guild = this.client.guilds.cache.get(guildId);
+        if (!guild) {
+            console.error(`[VoiceManager] Guild ${guildId} not found in cache`);
             return null;
-        const existing = getVoiceConnection(guildId);
-        if (existing) {
-            existing.destroy();
-            this.connections.delete(guildId);
         }
-        const voiceChannel = channel;
-        const connection = joinVoiceChannel({
-            channelId: voiceChannel.id,
-            guildId: voiceChannel.guild.id,
-            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-            selfDeaf: false,
-            selfMute: false,
-        });
-        this.connections.set(guildId, connection);
-        return connection;
+        try {
+            const connection = joinVoiceChannel({
+                channelId: channelId,
+                guildId: guildId,
+                adapterCreator: guild.voiceAdapterCreator,
+                selfDeaf: false,
+            });
+            this.connections.set(guildId, connection);
+            console.log(`[VoiceManager] Connection state created for guild ${guildId}`);
+            connection.on(VoiceConnectionStatus.Disconnected, async () => {
+                try {
+                    await Promise.race([
+                        entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+                        entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+                    ]);
+                }
+                catch (error) {
+                    console.log(`[VoiceManager] Connection disconnected and failed to reconnect: ${error}`);
+                    connection.destroy();
+                    this.connections.delete(guildId);
+                }
+            });
+            connection.on('error', (error) => {
+                console.error(`[VoiceManager] Connection error in guild ${guildId}:`, error);
+            });
+            return connection;
+        }
+        catch (error) {
+            console.error(`[VoiceManager] Failed to join channel ${channelId}:`, error);
+            return null;
+        }
     }
     leaveChannel(guildId) {
         const connection = this.connections.get(guildId);
@@ -292,8 +337,6 @@ export class VoiceManager {
         catch (error) {
             console.error('Voice playback error:', error);
         }
-        finally {
-            this.leaveChannel(guildId);
-        }
+        // Connection remains alive until stopRoomCleanup is called
     }
 }
