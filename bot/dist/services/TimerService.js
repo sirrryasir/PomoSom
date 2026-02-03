@@ -142,6 +142,14 @@ export class TimerService {
     getAllSessions() {
         return Array.from(this.rooms.values());
     }
+    getTotalParticipants() {
+        let total = 0;
+        for (const room of this.rooms.values()) {
+            // Only count active participants (those who have not left)
+            total += room.participants.size;
+        }
+        return total;
+    }
     formatTime(seconds) {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;

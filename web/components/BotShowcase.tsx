@@ -66,7 +66,7 @@ export function BotShowcase() {
                     </h1>
 
                     <p className="max-w-3xl mx-auto text-lg md:text-xl text-foreground/60 mb-12 font-medium leading-relaxed">
-                        Pomora is the world&apos;s first <span className="text-foreground border-b-2 border-orange-500/20">Zero-Command</span> Pomodoro bot.
+                        Pomora is the world&apos;s first <span className="text-foreground border-b-2 border-orange-500/20">Voice-Automated</span> Pomodoro bot.
                         Deep work, made simple.
                     </p>
 
@@ -210,10 +210,10 @@ export function BotShowcase() {
 
                             <div className="space-y-8">
                                 {[
-                                    { title: 'Mandatory Setup Control', desc: 'Secure and precise. Admins explicitly designate study rooms to ensure tracking is 100% accurate and intentional.', icon: Zap },
+                                    { title: 'Global Status', desc: 'Real-time "Watching X People Deep Working" status updates across all servers.', icon: Zap },
                                     { title: 'Interactive Status Cards', desc: 'A dynamically updated, beautifully rendered image appears in your voice channel, showing exactly who is in deep focus.', icon: BarChart3 },
-                                    { title: 'Persistent Timer Logic', desc: 'Focus sessions survive brief disconnects. Timers only pause or stop when the current stage completes, maintaining flow.', icon: Clock },
-                                    { title: 'Real-Time Server Analytics', desc: 'No mock data. Get daily and weekly PDF summaries of your server\'s actual productivity performance.', icon: Trophy },
+                                    { title: 'Ghost Sessions', desc: 'Timers persist intelligently even if the voice channel is empty, ensuring session integrity until the stage ends.', icon: Clock },
+                                    { title: 'Real-Time Server Analytics', desc: 'No mock data. Get daily and weekly image reports of your server\'s actual productivity performance.', icon: Trophy },
                                 ].map((feature, i) => (
                                     <motion.div
                                         key={i}

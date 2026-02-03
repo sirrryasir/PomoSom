@@ -108,21 +108,24 @@ export class DatabaseService {
         try {
             const studyChannelId = updates.study_channel_id;
             const reportChannelId = updates.report_channel_id;
-            // Check if exists first to decide INSERT vs UPDATE
-            // This explicit check is safer than complex ON CONFLICT logic for dynamic updates
-            const existing = await this.getGuildConfig(guildId);
-            if (existing) {
-                await this.sql `
-                    UPDATE guild_configs SET ${this.sql(updates)}, updated_at = NOW()
-                    WHERE guild_id = ${guildId}
-                 `;
-            }
-            else {
-                await this.sql `
-                    INSERT INTO guild_configs (guild_id, study_channel_id, report_channel_id)
-                    VALUES (${guildId}, ${studyChannelId || null}, ${reportChannelId || null})
-                 `;
-            }
+            // Use UPSERT (Insert ... On Conflict Do Update) for atomicity and checking existence
+            await this.sql `
+                INSERT INTO guild_configs (
+                    guild_id, study_channel_id, report_channel_id,
+                    welcome_channel_id, welcome_message, welcome_enabled, updated_at
+                )
+                VALUES (
+                    ${guildId},
+                    ${updates.study_channel_id ?? null},
+                    ${updates.report_channel_id ?? null},
+                    ${updates.welcome_channel_id ?? null},
+                    ${updates.welcome_message ?? null},
+                    ${updates.welcome_enabled ?? false},
+                    NOW()
+                )
+                ON CONFLICT (guild_id)
+                DO UPDATE SET ${this.sql(updates)}, updated_at = NOW()
+            `;
         }
         catch (error) {
             console.error(`[DatabaseService] ❌ Error updating config for ${guildId}:`, error);

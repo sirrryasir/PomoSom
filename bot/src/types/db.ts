@@ -2,6 +2,9 @@ export interface GuildConfig {
     guild_id: string;
     study_channel_id: string | null;
     report_channel_id: string | null;
+    welcome_channel_id: string | null;
+    welcome_message: any | null; // JSONB
+    welcome_enabled: boolean;
     updated_at: Date;
 }
 

@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pomora Web Dashboard 🌐
 
-## Getting Started
+**The Visual Interface for the Pomora Ecosystem.**
 
-First, run the development server:
+The Web Dashboard serves two primary purposes:
+1.  **Real-Time Dashboard**: Allows users to watch their active Discord timer, view analytics, and manage settings.
+2.  **Documentation Site**: Hosts the public documentation for the Pomora Bot (`/bot/docs`).
+
+Built with **Next.js 14**, **TailwindCSS**, and **TypeScript**.
+
+---
+
+## ⚡ Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) (App Router)
+- **Styling**: TailwindCSS + Framer Motion (for animations)
+- **Database/Auth**: Supabase (PostgreSQL + Discord OAuth)
+- **Runtime**: Bun
+
+---
+
+## 📂 Project Structure
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+web/
+├── app/                  # App Router Routes
+│   ├── page.tsx          # Main Landing Page
+│   ├── bot/              
+│   │   ├── page.tsx      # Bot Showcase Page
+│   │   └── docs/         # Documentation Routes
+│   ├── timer/            # Authenticated Web Timer
+│   └── layout.tsx        # Root Layout
+├── components/           # React Components
+│   ├── bot/              # Bot-specific UI (Navbar, Footer)
+│   ├── ui/               # Reusable UI primitives
+│   └── ...
+├── lib/                  # Utilities (Supabase client, helpers)
+└── public/               # Static Assets
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Development Guide
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
+- **Supabase Project**: You need a Supabase project for Auth and Database.
+- **Discord OAuth**: Configure a Discord Application for "Login with Discord".
 
-## Learn More
+### Environment Setup
 
-To learn more about Next.js, take a look at the following resources:
+Create a `.env.local` file in the `web` directory:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# App URL (for Auth redirects)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-## Deploy on Vercel
+### Running Locally
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1.  **Navigate to web directory**:
+    ```bash
+    cd web
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2.  **Install Dependencies**:
+    ```bash
+    bun install
+    ```
+
+3.  **Start Dev Server**:
+    ```bash
+    bun run dev
+    ```
+
+4.  **Visit**: [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 📖 Documentation Section
+
+The documentation pages are located in `app/bot/docs`.
+- The layout is handled by `app/bot/docs/layout.tsx`.
+- Content is written in standard React/JSX within `page.tsx`.
+
+To update the docs, simply edit the corresponding file in that directory. The site uses standard Tailwind typography for formatting.
+
+---
+
+*[Back to Project Root](../README.md)*

@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS public.guild_configs (
     weekly_report_enabled BOOLEAN DEFAULT TRUE,
     daily_report_enabled BOOLEAN DEFAULT TRUE,
     timezone TEXT DEFAULT 'UTC',
+    welcome_channel_id TEXT,
+    welcome_message JSONB,
+    welcome_enabled BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

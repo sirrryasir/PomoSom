@@ -64,9 +64,9 @@ export default function DocsPage() {
                                     <span className="text-orange-500">YOUR COMMUNITY.</span>
                                 </h1>
                                 <p className="text-muted-foreground text-xl leading-relaxed font-light max-w-2xl">
-                                    Pomora is the first <span className="text-foreground font-semibold">Zero-Command</span> Pomodoro bot.
+                                    Pomora is the first <span className="text-foreground font-semibold">Voice-Automated</span> Pomodoro bot.
                                     By automating the entire focus-break cycle through voice channel detection, we help study communities stay
-                                    productive without the friction of complex bot commands.
+                                    productive with minimal friction.
                                 </p>
                             </motion.div>
                         </section>
@@ -98,7 +98,7 @@ export default function DocsPage() {
                                         <h3 className="font-bold text-xl mb-4 text-orange-500">2. Mandatory Configuration</h3>
                                         <p className="text-muted-foreground mb-4 text-sm leading-relaxed font-light">Pomora requires explicit designation of your study room to begin tracking sessions:</p>
                                         <div className="bg-zinc-950 p-3 rounded-lg font-mono text-xs text-orange-500 mb-4 border border-white/5">
-                                            !setup vc #StudyRoom
+                                            /config channels study #StudyRoom
                                         </div>
                                         <p className="text-[10px] text-muted-foreground/60 italic font-medium tracking-tight uppercase">NOTE: Tracking will not start until this is set.</p>
                                     </div>
@@ -159,11 +159,15 @@ export default function DocsPage() {
                                                 <div className="space-y-4">
                                                     <div className="space-y-2">
                                                         <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Setup Voice Channel</p>
-                                                        <CodeBlock code="!setup vc #channel" />
+                                                        <CodeBlock code="/config channels study #channel" />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Setup Reports Channel</p>
-                                                        <CodeBlock code="!setup reports #channel" />
+                                                        <CodeBlock code="/config channels reports #channel" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Setup Welcome Message</p>
+                                                        <CodeBlock code="/config welcome channel #channel" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -195,11 +199,12 @@ export default function DocsPage() {
                                             </thead>
                                             <tbody className="divide-y divide-border">
                                                 {[
-                                                    { cmd: '!lb [daily/weekly]', desc: 'Shows real-time server study rankings.', role: 'Public' },
-                                                    { cmd: '!status', desc: 'Sync the active status card in the voice channel.', role: 'Public' },
-                                                    { cmd: '!me', desc: 'Personal study stats and global achievement levels.', role: 'Public' },
-                                                    { cmd: '!setup', desc: 'View current server configuration overview.', role: 'Admin' },
-                                                    { cmd: '!setup vc/reports', desc: 'Explicitly configure voice or reporting channels.', role: 'Admin' },
+                                                    { cmd: '/leaderboard [term]', desc: 'Shows real-time server study rankings (weekly/monthly/total).', role: 'Public' },
+                                                    { cmd: '/status', desc: 'Sync the active status card in the voice channel.', role: 'Public' },
+                                                    { cmd: '/stats', desc: 'Personal study stats and global achievement levels.', role: 'Public' },
+                                                    { cmd: '/config', desc: 'Complete server configuration menu.', role: 'Admin' },
+                                                    { cmd: '/config welcome test', desc: 'Test the welcome embed message.', role: 'Admin' },
+                                                    { cmd: '/help', desc: 'View all available commands.', role: 'Public' },
                                                 ].map((row) => (
                                                     <tr key={row.cmd} className="hover:bg-orange-500/[0.02] transition-colors group">
                                                         <td className="px-8 py-6 font-black text-orange-500 font-mono tracking-tighter whitespace-nowrap">{row.cmd}</td>
@@ -232,9 +237,9 @@ export default function DocsPage() {
                                 </h2>
                                 <div className="grid gap-6">
                                     {[
-                                        { q: "Why isn't the bot working in my VC?", a: "Ensure you have used !setup vc #RoomName. Pomora strictly monitors explicitly configured channels for precision tracking." },
-                                        { q: "Do members keep their time if they disconnect?", a: "Yes. Pomora logs session data every time a stage (Focus/Break) completes, ensuring no hard-earned study minutes are lost." },
-                                        { q: "How are reports generated?", a: "Reports are generated automatically based on real-time activity logged in your server's database. No mock or placeholder data is ever shown." },
+                                        { q: "Why isn't the bot working in my VC?", a: "Ensure you have used /config channels study #channel. Pomora strictly monitors explicitly configured channels for precision tracking." },
+                                        { q: "Do members keep their time if they disconnect?", a: "Yes. Pomora logs session data every time a stage (Focus/Break) completes, either when the timer ends or when you leave." },
+                                        { q: "What is Ghost Session?", a: "If everyone leaves the voice channel, the timer CONTINUES running until the current stage ends (e.g. 25m Focus), allowing you to rejoin without losing progress." },
                                     ].map((item, i) => (
                                         <div key={i} className="p-8 rounded-[2rem] border border-border bg-muted/10 hover:border-orange-500/30 transition-all group">
                                             <h4 className="font-black text-xl mb-4 group-hover:text-orange-500 transition-colors leading-tight tracking-tight">{item.q}</h4>

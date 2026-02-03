@@ -92,19 +92,8 @@ export class VoiceManager {
         }
 
         // Auto-leave check (Passive Mode Cleanup)
-        try {
-            const channel = await this.client.channels.fetch(channelId);
-            if (channel && channel.isVoiceBased()) {
-                const voiceChannel = channel as VoiceChannel;
-                const humans = voiceChannel.members.filter(m => !m.user.bot).size;
-                if (humans === 0) {
-                    console.log(`[VoiceManager] 🧹 VC Empty. Cleaning up.`);
-                    this.leaveChannel(guildId);
-                }
-            }
-        } catch (err) {
-            console.error(`[VoiceManager] ❌ Failed to check members on leave:`, err);
-        }
+        // User requested: Timer should CONTINUE even if empty, until the stage ends.
+        // We do NOT stop the room here. Cleanup happens in handleStageComplete if empty.
 
         const room = this.timerService.getRoomSession(channelId);
         if (room) {
