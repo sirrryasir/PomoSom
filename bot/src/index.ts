@@ -1,5 +1,16 @@
 import { Client, GatewayIntentBits, Interaction, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, TextChannel, Events } from 'discord.js';
+import ffmpegPath from 'ffmpeg-static';
 import { config } from 'dotenv';
+
+// Force FFmpeg path for prism-media (used by @discordjs/voice)
+if (ffmpegPath) {
+    process.env.FFMPEG_PATH = ffmpegPath;
+    console.log(`[FFmpeg] Path set to: ${ffmpegPath}`);
+} else {
+    console.warn('[FFmpeg] Warning: ffmpeg-static returned null path.');
+}
+
+config();
 import http from 'node:http';
 import { VoiceManager } from './services/VoiceManager.js';
 import { TimerService } from './services/TimerService.js';

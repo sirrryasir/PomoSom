@@ -12,12 +12,12 @@
 
 ## ⚡ Overview
 
-Pomora is a comprehensive, open-source productivity ecosystem designed to turn Discord servers into high-performance study hubs. It combines a **Voice-Automated Discord Bot** with a **Real-time Web Dashboard**, treating productivity as a multiplayer sport.
+Pomora is a **high-performance, open-source productivity bot** designed to turn Discord servers into focused study hubs. It combines a **Voice-Automated Timer** with a **Real-time Web Dashboard**, treating productivity as a collaborative experience.
 
 Unlike generic timers, Pomora is:
-- **Presence-First**: Real-time status updates ("Watching 45 People Deep Working").
-- **Voice-Automated**: No commands needed. Join a voice channel, and the session begins.
-- **Unified**: Your web dashboard syncs instantly with your Discord activity.
+- **Zero-Friction**: No commands needed to start. Just join a voice channel.
+- **Presence-Aware**: Tracks "Deep Work" time based on voice activity and presence checks.
+- **Unified**: Discord activity syncs instantly to your personal web dashboard.
 
 ## 🏗️ Ecosystem Architecture
 
@@ -45,13 +45,11 @@ graph TD
 
 ```bash
 pomora/
-├── bot/                # Discord Bot Application
-│   ├── src/            # Source Code (TypeScript)
-│   ├── assets/         # Images & Fonts for Canvas Generation
+├── bot/                # Discord Bot Application (TypeScript)
+│   ├── src/            # Core Logic (Timer, Voice, Commands)
 │   └── README.md       # Bot-Specific Documentation
-├── web/                # Web Dashboard & Documentation Site
-│   ├── app/            # Next.js 14 App Router
-│   ├── components/     # React Components
+├── web/                # Web Dashboard (Next.js 14)
+│   ├── app/            # App Router & Docs
 │   └── README.md       # Web-Specific Documentation
 └── README.md           # You are here
 ```
@@ -60,9 +58,10 @@ pomora/
 
 ### 🤖 Discord Bot
 *See [bot/README.md](bot/README.md) for full details.*
-- **Ghost Sessions**: Sessions persist intelligently even if the voice channel empties temporarily.
-- **Dynamic Channel Renaming**: Channels update to reflect status (e.g., `🔴 Final Exam | Focus`).
-- **Visual Leaderboards**: High-fidelity image generation for weekly rankings.
+- **Automated Sessions**: Detects voice channel activity to start/stop timers automatically.
+- **Smart Transitions**: seamless flow between Focus (50m) and Break (10m) modes.
+- **Presence Verification**: "Check-in" buttons ensure users are actually present at their desks.
+- **Dynamic Leaderboards**: Generates high-quality weekly/daily ranking cards in chat.
 
 ### 🌐 Web Dashboard
 *See [web/README.md](web/README.md) for full details.*

@@ -3,7 +3,7 @@
 **The Visual Interface for the Pomora Ecosystem.**
 
 The Web Dashboard serves two primary purposes:
-1.  **Real-Time Dashboard**: Allows users to watch their active Discord timer, view analytics, and manage settings.
+1.  **Metric Visualization**: Users can login via Discord to view their deep work history.
 2.  **Documentation Site**: Hosts the public documentation for the Pomora Bot (`/bot/docs`).
 
 Built with **Next.js 14**, **TailwindCSS**, and **TypeScript**.
@@ -12,10 +12,11 @@ Built with **Next.js 14**, **TailwindCSS**, and **TypeScript**.
 
 ## ⚡ Tech Stack
 
-- **Framework**: [Next.js](https://nextjs.org/) (App Router)
-- **Styling**: TailwindCSS + Framer Motion (for animations)
+- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+- **Styling**: TailwindCSS + Framer Motion (Animations)
 - **Database/Auth**: Supabase (PostgreSQL + Discord OAuth)
 - **Runtime**: Bun
+- **Components**: Lucide Icons, Custom UI Primitives
 
 ---
 

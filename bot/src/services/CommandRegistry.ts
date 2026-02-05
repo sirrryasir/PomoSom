@@ -94,6 +94,7 @@ export class CommandRegistry {
                         .setDescription('Time period')
                         .setRequired(false)
                         .addChoices(
+                            { name: 'Daily', value: 'daily' },
                             { name: 'Weekly', value: 'weekly' },
                             { name: 'Monthly', value: 'monthly' },
                             { name: 'All Time', value: 'total' }
@@ -265,6 +266,19 @@ export class CommandRegistry {
         if (!command) return;
 
         try {
+            // Permission Check: Allow public access to specific commands
+            const publicCommands = ['stats', 'status'];
+            if (!publicCommands.includes(interaction.commandName)) {
+                const member = interaction.member;
+                if (member && typeof member.permissions !== 'string' && member.permissions) {
+                    const hasPerms = member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild);
+                    if (!hasPerms) {
+                        await interaction.reply({ content: '⛔ You do not have permission to use this command. Only Admins and Moderators can use this.', ephemeral: true });
+                        return;
+                    }
+                }
+            }
+
             await command.execute(interaction);
         } catch (error) {
             console.error(error);

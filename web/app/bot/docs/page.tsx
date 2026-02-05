@@ -57,7 +57,7 @@ export default function DocsPage() {
                             >
                                 <div className="flex items-center gap-2 text-orange-500 font-bold mb-4 bg-orange-500/5 w-fit px-4 py-1.5 rounded-full border border-orange-500/10">
                                     <Zap className="w-4 h-4" />
-                                    <span className="text-[10px] uppercase tracking-widest font-black">Version 1.2 Now Live</span>
+                                    <span className="text-[10px] uppercase tracking-widest font-black">Version 1.0.0 Stable</span>
                                 </div>
                                 <h1 className="text-4xl md:text-6xl font-black mb-8 tracking-tighter leading-none">
                                     BRING FOCUS TO<br />
@@ -98,7 +98,7 @@ export default function DocsPage() {
                                         <h3 className="font-bold text-xl mb-4 text-orange-500">2. Mandatory Configuration</h3>
                                         <p className="text-muted-foreground mb-4 text-sm leading-relaxed font-light">Pomora requires explicit designation of your study room to begin tracking sessions:</p>
                                         <div className="bg-zinc-950 p-3 rounded-lg font-mono text-xs text-orange-500 mb-4 border border-white/5">
-                                            /config channels study #StudyRoom
+                                            /config channels study target:#VoiceChannel
                                         </div>
                                         <p className="text-[10px] text-muted-foreground/60 italic font-medium tracking-tight uppercase">NOTE: Tracking will not start until this is set.</p>
                                     </div>
@@ -159,15 +159,15 @@ export default function DocsPage() {
                                                 <div className="space-y-4">
                                                     <div className="space-y-2">
                                                         <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Setup Voice Channel</p>
-                                                        <CodeBlock code="/config channels study #channel" />
+                                                        <CodeBlock code="/config channels study target:#channel" />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Setup Reports Channel</p>
-                                                        <CodeBlock code="/config channels reports #channel" />
+                                                        <CodeBlock code="/config channels reports target:#channel" />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Setup Welcome Message</p>
-                                                        <CodeBlock code="/config welcome channel #channel" />
+                                                        <CodeBlock code="/config welcome channel target:#channel" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -199,12 +199,13 @@ export default function DocsPage() {
                                             </thead>
                                             <tbody className="divide-y divide-border">
                                                 {[
-                                                    { cmd: '/leaderboard [term]', desc: 'Shows real-time server study rankings (weekly/monthly/total).', role: 'Public' },
+                                                    { cmd: '/leaderboard [timeframe]', desc: 'Shows real-time server study rankings (Daily, Weekly, Monthly, All Time).', role: 'Admin' },
                                                     { cmd: '/status', desc: 'Sync the active status card in the voice channel.', role: 'Public' },
-                                                    { cmd: '/stats', desc: 'Personal study stats and global achievement levels.', role: 'Public' },
-                                                    { cmd: '/config', desc: 'Complete server configuration menu.', role: 'Admin' },
-                                                    { cmd: '/config welcome test', desc: 'Test the welcome embed message.', role: 'Admin' },
-                                                    { cmd: '/help', desc: 'View all available commands.', role: 'Public' },
+                                                    { cmd: '/stats', desc: 'View your personal study sessions and total hours.', role: 'Public' },
+                                                    { cmd: '/config channels study', desc: 'Set the main voice channel for Pomora to track.', role: 'Admin' },
+                                                    { cmd: '/config channels reports', desc: 'Set the text channel for daily/weekly reports.', role: 'Admin' },
+                                                    { cmd: '/config welcome channel', desc: 'Set the channel for welcome messages.', role: 'Admin' },
+                                                    { cmd: '/help', desc: 'View all available commands.', role: 'Admin' },
                                                 ].map((row) => (
                                                     <tr key={row.cmd} className="hover:bg-orange-500/[0.02] transition-colors group">
                                                         <td className="px-8 py-6 font-black text-orange-500 font-mono tracking-tighter whitespace-nowrap">{row.cmd}</td>

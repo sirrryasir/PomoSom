@@ -57,7 +57,7 @@ export function BotShowcase() {
                         className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 mb-8"
                     >
                         <Zap className="w-3 h-3 text-orange-500" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-500">Trusted by 10,000+ Students</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-500">Designed for Focused Communities</span>
                     </motion.div>
 
                     <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-transparent bg-clip-text bg-gradient-to-b from-foreground to-foreground/70">
@@ -107,7 +107,7 @@ export function BotShowcase() {
                 >
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/20 mb-10">Integration Partners & Communities</p>
                     <div className="flex flex-wrap justify-center gap-x-16 gap-y-10 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
-                        {['TechTalk', 'Ardaykaab Academy', 'University Hub', 'Developer Study', 'Medical Prep'].map((name) => (
+                        {['Ardaykaab Academy', 'TechTalk', 'Open Source Community'].map((name) => (
                             <div key={name} className="font-black text-2xl tracking-tighter italic select-none cursor-default">{name}</div>
                         ))}
                     </div>
@@ -169,9 +169,9 @@ export function BotShowcase() {
             <section className="py-20 px-4">
                 <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                        { label: 'Deep Work Sessions', value: '1.2M+', icon: Timer },
-                        { label: 'Study Rooms Active', value: '850+', icon: MessageSquare },
-                        { label: 'Focus Hours Logged', value: '4.8M', icon: Clock },
+                        { label: 'Deep Work Sessions', value: 'Unlimited', icon: Timer },
+                        { label: 'Community Focus', value: 'Active', icon: MessageSquare },
+                        { label: 'Status Updates', value: 'Real-Time', icon: Clock },
                         { label: 'Uptime Reliability', value: '99.9%', icon: Shield },
                     ].map((stat, i) => (
                         <motion.div

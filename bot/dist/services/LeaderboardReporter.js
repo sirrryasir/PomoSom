@@ -9,19 +9,34 @@ export class LeaderboardReporter {
         this.client = client;
         this.dbService = dbService;
         this.imageService = new ImageService();
-        setInterval(() => this.checkAndSendReports(), 60 * 60 * 1000);
+        // Check every minute to be precise
+        setInterval(() => this.checkAndSendReports(), 60 * 1000);
     }
     async checkAndSendReports() {
         const now = new Date();
-        const hour = now.getHours();
-        if (hour === 20) {
+        const utcHour = now.getUTCHours();
+        const utcMin = now.getUTCMinutes();
+        const dayOfWeek = now.getUTCDay(); // 0=Sun, 5=Fri
+        const date = now.getUTCDate();
+        // 12:00 AM EAT is 21:00 UTC
+        const TARGET_HOUR_UTC = 21;
+        // Daily Report
+        if (utcHour === TARGET_HOUR_UTC && utcMin === 0) {
+            console.log('[LeaderboardReporter] 🕒 Triggering Daily Reports...');
             await this.broadcastReports('daily');
+            await this.dbService.resetStats('daily');
         }
-        if (now.getDay() === 5 && hour === 20) {
+        // Weekly Report (Friday Night)
+        if (dayOfWeek === 5 && utcHour === TARGET_HOUR_UTC && utcMin === 0) {
+            console.log('[LeaderboardReporter] 🕒 Triggering Weekly Reports...');
             await this.broadcastReports('weekly');
+            await this.dbService.resetStats('weekly');
         }
-        if (now.getDate() === 1 && hour === 20) {
+        // Monthly Report (1st of Month)
+        if (date === 1 && utcHour === TARGET_HOUR_UTC && utcMin === 0) {
+            console.log('[LeaderboardReporter] 🕒 Triggering Monthly Reports...');
             await this.broadcastReports('monthly');
+            await this.dbService.resetStats('monthly');
         }
     }
     async broadcastReports(timeframe) {
@@ -60,7 +75,7 @@ export class LeaderboardReporter {
                 }
                 return;
             }
-            const imageBuffer = await this.imageService.generateLeaderboardCard(guild.name, timeframe === 'daily' ? 'Daily' : timeframe === 'weekly' ? 'Weekly' : 'Monthly', leaderboard, this.client);
+            const imageBuffer = await this.imageService.generateLeaderboardCard(guild.name, timeframe === 'daily' ? 'Daily' : timeframe === 'weekly' ? 'Weekly' : timeframe === 'monthly' ? 'Monthly' : 'All Time', leaderboard, this.client);
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'leaderboard.png' });
             await channel.send({
                 content: `**${timeframe.toUpperCase()} REPORT** for **${guild.name}**`,

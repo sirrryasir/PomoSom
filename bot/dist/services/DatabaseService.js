@@ -158,6 +158,29 @@ export class DatabaseService {
             return null;
         }
     }
+    /**
+     * Resets stats for a specific timeframe.
+     * This is used after generation reports to start the new period fresh.
+     */
+    async resetStats(timeframe) {
+        if (!this.sql)
+            return;
+        try {
+            if (timeframe === 'daily') {
+                await this.sql `UPDATE guild_stats SET daily_time = 0`;
+            }
+            else if (timeframe === 'weekly') {
+                await this.sql `UPDATE guild_stats SET weekly_time = 0`;
+            }
+            else if (timeframe === 'monthly') {
+                await this.sql `UPDATE guild_stats SET monthly_time = 0`;
+            }
+            console.log(`[DatabaseService] 🔄 Reset ${timeframe} stats.`);
+        }
+        catch (error) {
+            console.error(`[DatabaseService] ❌ Error resetting ${timeframe} stats:`, error);
+        }
+    }
     // --- Active Message Management (for persistent status cards) ---
     async setActiveMessage(channelId, guildId, messageId) {
         if (!this.sql)

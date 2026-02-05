@@ -23,16 +23,17 @@ The bot doesn't just run a timer; it manages a **Session State Machine**.
 
 ## 🛠️ Command Reference
 
-In `v2.4`, all commands have migrated to **Slash Commands**.
+In `v1.0.0`, all commands are **Slash Commands**.
 
 | Command | Description | Permission |
 | :--- | :--- | :--- |
-| `/config` | The admin control panel. | `Administrator` |
+| `/config` | The admin control panel (Channels, Welcome settings). | `Administrator` |
 | `/config channels study` | Set the target Voice Channel for tracking. | `Administrator` |
-| `/config channels report` | Set the Text Channel for logs/status cards. | `Administrator` |
+| `/config channels reports` | Set the Text Channel for logs/status cards. | `Administrator` |
 | `/status` | Force-sync the status card to the bottom of chat. | Public |
 | `/stats` | View your personal daily/weekly focus stats. | Public |
-| `/leaderboard` | Show the server's top 10 users. | Public |
+| `/leaderboard` | Show the server's top 10 users (Daily/Weekly/Monthly). | `Administrator` |
+| `/help` | View a guide of all available commands. | `Administrator` |
 
 ---
 

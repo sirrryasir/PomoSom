@@ -61,7 +61,7 @@ export class CommandRegistry {
                 .addStringOption(option => option.setName('timeframe')
                 .setDescription('Time period')
                 .setRequired(false)
-                .addChoices({ name: 'Weekly', value: 'weekly' }, { name: 'Monthly', value: 'monthly' }, { name: 'All Time', value: 'total' })),
+                .addChoices({ name: 'Daily', value: 'daily' }, { name: 'Weekly', value: 'weekly' }, { name: 'Monthly', value: 'monthly' }, { name: 'All Time', value: 'total' })),
             execute: async (interaction) => {
                 await interaction.deferReply({ ephemeral: false }); // Public leaderboard
                 const timeframe = interaction.options.getString('timeframe') || 'weekly';
@@ -204,6 +204,18 @@ export class CommandRegistry {
         if (!command)
             return;
         try {
+            // Permission Check: Allow public access to specific commands
+            const publicCommands = ['stats', 'status'];
+            if (!publicCommands.includes(interaction.commandName)) {
+                const member = interaction.member;
+                if (member && typeof member.permissions !== 'string' && member.permissions) {
+                    const hasPerms = member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild);
+                    if (!hasPerms) {
+                        await interaction.reply({ content: '⛔ You do not have permission to use this command. Only Admins and Moderators can use this.', ephemeral: true });
+                        return;
+                    }
+                }
+            }
             await command.execute(interaction);
         }
         catch (error) {

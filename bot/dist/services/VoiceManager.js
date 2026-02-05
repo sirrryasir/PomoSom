@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from 'discord.js';
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, } from '@discordjs/voice';
 import { ImageService } from './ImageService.js';
 import path from 'path';
@@ -92,6 +92,7 @@ export class VoiceManager {
                 await this.dbService.deleteActiveMessage(room.channelId);
             }
             this.timerService.stopRoomCleanup(room.channelId);
+            await this.resetChannelName(room.channelId);
             this.leaveChannel(room.guildId);
             return;
         }
@@ -108,7 +109,7 @@ export class VoiceManager {
                 await member.voice.disconnect(`Inactivity: Missed 4 consecutive check-ins`).catch(() => { });
                 const channel = await this.client.channels.fetch(data.channelId);
                 if (channel && channel.isTextBased()) {
-                    await channel.send(`User <@${data.userId}> disconnected for inactivity (Missed 4 sessions).`).catch(() => { });
+                    await channel.send(`👋 <@${data.userId}> has been removed due to inactivity. Please rejoin and use the **Present** button to stay in the session!`).catch(() => { });
                 }
             }
             this.timerService.stopTimer(data.userId); // This actually removes them from the room
@@ -321,10 +322,28 @@ export class VoiceManager {
                     resolve();
                 });
             });
+            // Disconnect after playing
+            this.leaveChannel(guildId);
         }
         catch (error) {
             console.error('Voice playback error:', error);
         }
         // Connection remains alive until stopRoomCleanup is called
+    }
+    async resetChannelName(channelId) {
+        try {
+            const channel = await this.client.channels.fetch(channelId);
+            if (!channel || !channel.isVoiceBased())
+                return;
+            const voiceChannel = channel;
+            const baseName = voiceChannel.name.split(' | ')[0];
+            if (voiceChannel.name !== baseName) {
+                await voiceChannel.setName(baseName).catch(() => { });
+                this.lastRenamed.delete(channelId);
+            }
+        }
+        catch (error) {
+            console.error('Failed to reset channel name:', error);
+        }
     }
 }
