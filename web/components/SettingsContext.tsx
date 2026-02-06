@@ -58,9 +58,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         const saved = localStorage.getItem('pomora_settings');
         if (saved) {
             try {
-                setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+                const parsed = JSON.parse(saved);
+                // Deep merge to ensure nested objects like themeColors are always valid
+                setSettings({
+                    ...DEFAULT_SETTINGS,
+                    ...parsed,
+                    themeColors: {
+                        ...DEFAULT_SETTINGS.themeColors,
+                        ...(parsed.themeColors || {})
+                    }
+                });
             } catch (e) {
                 console.error('Failed to parse settings', e);
+                // Optional: Clear corrupted settings
+                // localStorage.removeItem('pomora_settings');
             }
         }
         setIsLoaded(true);
